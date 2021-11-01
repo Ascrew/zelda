@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>zelda sound icon</title>
+
+
+</head>
+<body>
+	<div class="music">
+		<button onclick="startMusic()">start</button>
+		<button onclick="stopMusic()">stop</button>
+		<input id="load_file" type="file" oninput="uploadFiles(event)"></input>
+		<input type="range" id="volume" min="-1" max="3" value="1" step="0.01">
+	</div>
+	<div class="state-bar">
+	<div class="thermometer">
+		<div class="pointer"></div>
+	</div>
+	<canvas id="canvas" class="canvas" height="60" width="60"></canvas>
+</div>
+<script>
+	// 定义音频上下文
+	var audioCtx = new AudioContext();
+	var AudioBufferSourceNode = audioCtx.createBufferSource();
+
+	// var oscillator = audioCtx.createOscillator();
+	// oscillator.frequency.value = 1196.00
+	// 方波
+	// oscillator.type = 'square'
+
+	// 生成音量控制上下文
+	var gainNode = audioCtx.createGain();
+	// 绘图器
+	var analyser = audioCtx.createAnalyser();
+
+	// 生成canvas图形
+	var canvas = document.getElementById("canvas");
+	console.log("listen canvas", canvas);
+	// canvas上下文
+	var canvasCtx = canvas.getContext("2d");
+
+	var music_buffer = null;
+	var fileDuration = null;
+	var playTime = 0;
+	var timer = null;
+
+	// 上传音乐文件
+	function uploadFiles(e) {
+  	let files = e.target.files[0];
+  	let filereader = new FileReader();
+  	filereader.readAsArrayBuffer(files);
+  	filereader.onload = (event) => {
+    	audioCtx.decodeAudioData(event.target.result).then((buffer) => {
+      	music_buffer = buffer;
+      	fileDuration = buffer.duration;
+      	console.log("listen music_buffer", music_buffer);
+    	});
+  	};
+	}
+
+	// 播放音乐
+	function startMusic() {
+  	// 转载资源节点
+  	AudioBufferSourceNode = audioCtx.createBufferSource();
+  	AudioBufferSourceNode.buffer = music_buffer;
+  	AudioBufferSourceNode.connect(audioCtx.destination);
+  	// 链接到canvas
+  	AudioBufferSourceNode.connect(analyser);
+  	// 鏈接到音量控制
+  	AudioBufferSourceNode.connect(gainNode).connect(audioCtx.destination);
+  	// 设置音量
+  	gainNode.gain.value = 1;
+  	const volumeControl = document.querySelector("#volume");
+
+  	volumeControl.addEventListener(
+    	"input",
+    	function () {
+      	gainNode.gain.value = this.value;
+    	},
+    	false
+  	);
+
+  	AudioBufferSourceNode.start(0, playTime);
+  	timer = setInterval(() => {
+    	if (playTime < fileDuration) {
+      	playTime += 0.1;
+    	} else {
+      	playTime = 0;
+      	clearInterval(timer);
+    	}
+  	}, 100);
+	}
+
+	// 暂停音乐
+	function stopMusic() {
+  	AudioBufferSourceNode.stop();
+  	clearInterval(timer);
+	}
+
+	function draw() {
+  	let bufferLength = 2000;
+  	let dataArray = new Uint8Array(bufferLength);
+  	drawVisual = requestAnimationFrame(draw);
+  	analyser.getByteTimeDomainData(dataArray);
+
+  	canvasCtx.fillStyle = "rgb(0, 0, 0)";
+  	canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+  	canvasCtx.lineWidth = 2;
+  	canvasCtx.strokeStyle = "rgb(239, 158, 255)";
+
+  	canvasCtx.beginPath();
+
+  	var sliceWidth = (canvas.width * 1.0) / bufferLength;
+  	var x = 0;
+
+  	for (var i = 0; i < bufferLength; i++) {
+    	var v = dataArray[i] / 128.0;
+    	var y = (v * canvas.height) / 2;
+
+    	if (i === 0) {
+      	canvasCtx.moveTo(x, y);
+    	} else {
+      	canvasCtx.lineTo(x, y);
+    	}
+
+    	x += sliceWidth;
+  	}
+
+  	canvasCtx.lineTo(canvas.width, canvas.height / 2);
+  	canvasCtx.stroke();
+	}
+	draw();
+
+</script>
+</body>
+</html>
+
+<style>
+	.html, body {
+		margin: 0;
+		padding: 0;
+		width: 100%;
+		height: 100%;
+	}
+	.canvas {
+		bottom: 100px;
+		right: 100px;
+		border-radius: 50%;
+		opacity: 0.3;
+	}
+	.thermometer {
+		width: 60px;;
+		height: 60px;;
+		bottom: 170px;
+		right: 100px;
+		opacity: 0.3;
+		background-color: #000;
+		border-radius: 50%;
+		z-index: -1;
+		display: flex;
+    align-items: center;
+    justify-content: center;
+	}
+	.pointer {
+		z-index: 2;
+		background-color: #0079fa;
+		height: 15px;
+		width: 15px;
+		border-radius: 50%;	
+		opacity: 1;
+		text-align: center;
+	}
+	.pointer::before {
+		top: 20px;
+		content: '';
+		height: 5px;
+		width: 5px;
+	}
+	.state-bar {
+		height: 200px;
+		display: flex;
+    justify-content: space-evenly;
+		flex-direction: column;
+		position: fixed;
+		bottom: 100px;
+		right: 100px;
+	}
+</style>
